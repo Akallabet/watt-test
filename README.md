@@ -22,21 +22,25 @@ Minimal Watt (Platformatic) monorepo for testing DigitalOcean deployment.
 ## Quick Start
 
 1. Copy environment file:
+
    ```bash
    cp .env.example .env
    ```
 
 2. Start PostgreSQL:
+
    ```bash
    npm run db:start
    ```
 
 3. Install dependencies:
+
    ```bash
    npm install
    ```
 
 4. Run development server:
+
    ```bash
    npm run dev
    ```
