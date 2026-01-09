@@ -1,0 +1,184 @@
+name: Pull Request
+
+on:
+  pull_request:
+    branches: ['main']
+    types: [opened, synchronize, reopened]
+
+jobs:
+  # Call the reusable workflow for testing and building
+  test-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup environment
+        uses: ./.github/actions/test-and-build
+
+  api-tests:
+    runs-on: ubuntu-latest
+    needs: test-and-build
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: API tests
+        uses: ./.github/actions/api-tests
+
+  e2e-tests:
+    runs-on: ubuntu-latest
+    needs: test-and-build
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: E2E tests
+        uses: ./.github/actions/e2e-tests
+
+  # Notify Notion about the PR check status
+  notify-notion:
+    name: Notify Notion
+    runs-on: ubuntu-latest
+    needs: [test-and-build, api-tests, e2e-tests]
+    if: always() # Run this job regardless of outcome
+    steps:
+      - name: Determine status
+        id: status
+        run: |
+          # Check all job results - if any failed, the whole PR failed
+          RESULTS='${{ toJSON(needs) }}'
+
+          if echo "$RESULTS" | jq -e 'to_entries | map(.value.result) | all(. == "success")' > /dev/null; then
+            echo "status=✅ Success" >> $GITHUB_OUTPUT
+            echo "emoji=✅" >> $GITHUB_OUTPUT
+            echo "result=success" >> $GITHUB_OUTPUT
+          elif echo "$RESULTS" | jq -e 'to_entries | map(.value.result) | any(. == "cancelled")' > /dev/null; then
+            echo "status=🚫 Cancelled" >> $GITHUB_OUTPUT
+            echo "emoji=🚫" >> $GITHUB_OUTPUT
+            echo "result=cancelled" >> $GITHUB_OUTPUT
+          elif echo "$RESULTS" | jq -e 'to_entries | map(.value.result) | any(. == "skipped")' > /dev/null; then
+            echo "status=⏭️ Skipped" >> $GITHUB_OUTPUT
+            echo "emoji=⏭️" >> $GITHUB_OUTPUT
+            echo "result=skipped" >> $GITHUB_OUTPUT
+          else
+            echo "status=❌ Failed" >> $GITHUB_OUTPUT
+            echo "emoji=❌" >> $GITHUB_OUTPUT
+            echo "result=failure" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Send Notion notification
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+          NOTION_USER_ID: ${{ secrets.NOTION_USER_ID }}
+        run: |
+          # Escape special characters for JSON
+          TITLE="${{ steps.status.outputs.emoji }} PR #${{ github.event.pull_request.number }}: ${{ github.event.pull_request.title }}"
+          TITLE=$(echo "$TITLE" | sed 's/"/\\"/g')
+
+          # Create the page in Notion
+          PAGE_RESPONSE=$(curl -s -X POST https://api.notion.com/v1/pages \
+            -H "Authorization: Bearer $NOTION_TOKEN" \
+            -H "Content-Type: application/json" \
+            -H "Notion-Version: 2022-06-28" \
+            --data @- <<EOF
+          {
+            "parent": { "database_id": "$NOTION_DATABASE_ID" },
+            "properties": {
+              "Name": {
+                "title": [
+                  {
+                    "text": {
+                      "content": "$TITLE"
+                    }
+                  }
+                ]
+              },
+              "Status": {
+                "select": {
+                  "name": "${{ steps.status.outputs.result }}"
+                }
+              },
+              "Author": {
+                "rich_text": [
+                  {
+                    "text": {
+                      "content": "${{ github.event.pull_request.user.login }}"
+                    }
+                  }
+                ]
+              },
+              "URL": {
+                "url": "${{ github.event.pull_request.html_url }}"
+              },
+              "Branch": {
+                "rich_text": [
+                  {
+                    "text": {
+                      "content": "${{ github.head_ref }}"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+          EOF
+          )
+
+          # Check if page creation was successful
+          if echo "$PAGE_RESPONSE" | jq -e '.object == "error"' > /dev/null 2>&1; then
+            echo "Error creating Notion page:"
+            echo "$PAGE_RESPONSE" | jq '.'
+            exit 1
+          fi
+
+          # Extract the page ID from the response
+          PAGE_ID=$(echo "$PAGE_RESPONSE" | jq -r '.id')
+
+          if [ -z "$PAGE_ID" ] || [ "$PAGE_ID" = "null" ]; then
+            echo "Failed to extract page ID from response:"
+            echo "$PAGE_RESPONSE" | jq '.'
+            exit 1
+          fi
+
+          echo "Successfully created Notion page with ID: $PAGE_ID"
+
+          # Add a comment with a mention to trigger a notification
+          if [ ! -z "$NOTION_USER_ID" ] && [ "$NOTION_USER_ID" != "null" ]; then
+            echo "Adding comment with mention to user: $NOTION_USER_ID"
+            COMMENT_RESPONSE=$(curl -s -X POST https://api.notion.com/v1/comments \
+              -H "Authorization: Bearer $NOTION_TOKEN" \
+              -H "Content-Type: application/json" \
+              -H "Notion-Version: 2022-06-28" \
+              --data @- <<EOF
+          {
+            "parent": { "page_id": "$PAGE_ID" },
+            "rich_text": [
+              {
+                "type": "mention",
+                "mention": {
+                  "type": "user",
+                  "user": { "id": "$NOTION_USER_ID" }
+                }
+              },
+              {
+                "type": "text",
+                "text": { "content": " PR check completed: ${{ steps.status.outputs.status }}" }
+              }
+            ]
+          }
+          EOF
+            )
+            
+            # Check if comment creation was successful
+            if echo "$COMMENT_RESPONSE" | jq -e '.object == "error"' > /dev/null 2>&1; then
+              echo "Error creating comment (notification will not be sent):"
+              echo "$COMMENT_RESPONSE" | jq '.'
+              # Don't exit with error - page was created successfully
+            else
+              echo "Successfully added comment for push notification"
+            fi
+          else
+            echo "NOTION_USER_ID not set - skipping push notification"
+          fi

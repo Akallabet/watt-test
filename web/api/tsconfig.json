@@ -1,0 +1,8 @@
+{
+  "extends": "@platformatic/tsconfig/tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist"
+  },
+  "include": ["src/**/*", "tests/**/*", "eslint.config.js"],
+  "exclude": ["node_modules", "dist", "types"]
+}

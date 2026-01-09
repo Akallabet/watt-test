@@ -1,0 +1,60 @@
+name: E2E Tests
+description: Run Playwright end-to-end tests
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup environment
+      uses: ./.github/actions/setup
+
+    - name: Install Playwright browsers
+      shell: bash
+      run: npx playwright install --with-deps chromium
+
+    - name: Start test database
+      shell: bash
+      run: npm run test:db:start
+
+    - name: Wait for database to be ready
+      shell: bash
+      run: |
+        echo "Waiting for database to be ready..."
+        for i in {1..20}; do
+          if docker exec $(docker ps -q -f "ancestor=postgres") pg_isready -U test -d test 2>/dev/null; then
+            echo "Database is ready!"
+            break
+          fi
+          echo "Waiting... ($i/20)"
+          sleep 1
+        done
+
+    - name: Build for test
+      shell: bash
+      run: npm run build:test
+
+    - name: Run E2E tests
+      shell: bash
+      env:
+        CI: true
+      run: npm run test:e2e
+
+    - name: Upload Playwright report
+      uses: actions/upload-artifact@v4
+      if: ${{ !cancelled() }}
+      with:
+        name: playwright-report
+        path: web/tests/playwright-report/
+        retention-days: 30
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: ${{ !cancelled() }}
+      with:
+        name: test-results
+        path: web/tests/test-results/
+        retention-days: 30
+
+    - name: Stop test database
+      shell: bash
+      if: always()
+      run: npm run test:db:stop

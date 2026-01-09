@@ -1,0 +1,55 @@
+---
+description: Rules for creating or updating a page inside `src/app/orgs/[orgId]`
+globs: src/**/*.ts, src/**/*.tsx
+alwaysApply: true
+---
+
+## APIs
+- For each entity, make sure to follow the corresponding type definition in `src/generated_types/{entity}.ts`
+- Create CRUD apis in `src/components/{entity}/api.ts` with `fetch{Entity}`, `create{Entity}`, `update{Entity}` using `fetch`
+- Follow this rule only for `fetch{Entity}` function
+```
+GET [P_PARENT_ENTITY]/[PARENT_PRIMARY_KEY]/[P_CHILDREN_ENTITY]
+Given a 1-to-many relationship, where a parent entity can have many children, you can query for the children directly.
+
+Example #1 using curl
+
+$ curl -X 'GET' 'http://localhost:3042/api/data/organizations/1/engagementOrganizationId
+
+[
+  {
+    "quote": "I'll be back"
+  },
+  {
+    "quote": "Hasta la vista, baby"
+  }
+]
+
+Example #2 using ts
+
+export async function fetchEngagements({
+  orgId,
+}: {
+  orgId: string;
+}): Promise<Array<Engagement>> {
+  const jwt = await getJwt({ orgId });
+  const res = await fetch(
+    `/api/data/organizations/${orgId}/engagementOrganizationId`,
+    {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${jwt}`,
+      },
+    },
+  );
+
+  if (!res.ok) {
+    throw new Error("Failed to fetch engagements");
+  }
+
+  return res.json();
+}
+```
+
+- Make sure to include the Authorization header with a jwt token using `getJwt({ orgId })`

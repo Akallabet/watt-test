@@ -1,0 +1,20 @@
+name: API Tests
+description: Run API tests
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup environment
+      uses: ./.github/actions/setup
+
+    - name: Start test database
+      shell: bash
+      run: npm run test:db:start
+
+    - name: Run API integration tests
+      shell: bash
+      run: npm run test:api
+
+    - name: Stop test database
+      shell: bash
+      run: npm run test:db:stop

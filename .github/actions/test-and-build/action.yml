@@ -1,0 +1,44 @@
+name: Test and Build
+description: Lint, typecheck, build, and test the application
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup environment
+      uses: ./.github/actions/setup
+
+    - name: Lint API
+      shell: bash
+      run: npm run lint:api
+
+    - name: Lint API
+      shell: bash
+      run: npm run lint:api
+
+    - name: Lint app
+      shell: bash
+      run: npm run lint:app
+
+    - name: Lint tests
+      shell: bash
+      run: npm run lint:tests
+
+    - name: Typecheck API
+      shell: bash
+      run: npm run test:types:api
+
+    - name: Typecheck app
+      shell: bash
+      run: npm run test:types:app
+
+    - name: Build the app
+      shell: bash
+      run: npm run build
+
+    - name: Api unit tests
+      shell: bash
+      run: npm run test:unit:api
+
+    - name: App unit tests
+      shell: bash
+      run: npm run test:unit:app

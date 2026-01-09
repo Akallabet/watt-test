@@ -1,0 +1,26 @@
+{
+  "name": "watt-test",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "^24.10.0"
+  },
+  "scripts": {
+    "db:start": "docker compose -f docker/dev/docker-compose.yml --env-file .env up postgresdb -d",
+    "db:stop": "docker compose -f docker/dev/docker-compose.yml --env-file .env down",
+    "dev": "wattpm dev",
+    "build": "wattpm build",
+    "start": "wattpm start",
+    "migrate:api": "npm run migrate --workspace=api"
+  },
+  "dependencies": {
+    "@platformatic/db": "^3.0.0",
+    "@platformatic/gateway": "^3.0.0",
+    "@platformatic/runtime": "^3.0.0",
+    "create-wattpm": "^3.0.0",
+    "wattpm": "^3.0.0"
+  },
+  "workspaces": [
+    "web/*"
+  ]
+}

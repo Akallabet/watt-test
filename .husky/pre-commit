@@ -1,0 +1,9 @@
+lint-staged
+npm run lint:api
+npm run lint:app
+npm run lint:tests
+npm run test:types:api
+npm run test:types:app
+npm run build
+npm run test:unit:api
+npm run test:unit:app

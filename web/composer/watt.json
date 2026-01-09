@@ -1,0 +1,22 @@
+{
+  "$schema": "https://schemas.platformatic.dev/@platformatic/gateway/3.28.2.json",
+  "watch": true,
+  "gateway": {
+    "applications": [
+      {
+        "id": "app",
+        "proxy": {
+          "prefix": "/"
+        }
+      },
+      {
+        "id": "api",
+        "openapi": {
+          "url": "/documentation/json",
+          "prefix": "/api/data"
+        }
+      }
+    ],
+    "refreshTimeout": 10000
+  }
+}

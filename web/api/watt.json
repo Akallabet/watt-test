@@ -1,0 +1,26 @@
+{
+  "$schema": "https://schemas.platformatic.dev/@platformatic/db/3.28.2.json",
+  "db": {
+    "connectionString": "{DB_PROTOCOL}://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DATA_DB_NAME}",
+    "poolSize": 10,
+    "graphql": false,
+    "openapi": true
+  },
+  "watch": {
+    "ignore": ["*.sqlite", "*.sqlite-journal"]
+  },
+  "migrations": {
+    "dir": "./src/migrations",
+    "autoApply": "{PLT_DB_APPLY_MIGRATIONS}"
+  },
+  "plugins": {
+    "paths": [
+      {
+        "path": "./src/routes"
+      }
+    ]
+  },
+  "types": {
+    "autogenerate": "{PLT_DB_TYPES_AUTOGENERATE}"
+  }
+}

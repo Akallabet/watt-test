@@ -1,0 +1,18 @@
+{
+  "$schema": "https://schemas.platformatic.dev/wattpm/3.28.2.json",
+  "autoload": {
+    "path": "web",
+    "exclude": ["common", "api-client"]
+  },
+  "logger": {
+    "level": "info"
+  },
+  "server": {
+    "hostname": "{HOST}",
+    "port": "{PLT_PORT}"
+  },
+  "watch": true,
+  "health": {},
+  "sourceMaps": false,
+  "exitOnUnhandledErrors": false
+}
